@@ -70,7 +70,7 @@ def get_traj(agent, env, episode_max_length):
 
     for _ in xrange(episode_max_length):
         act_prob = agent.get_one_act_prob(ob)
-        csprob_n = np.cumsum(act_prob)
+        csprob_n = np.cumsum(act_prob) # cumulative sum of probability
         a = (csprob_n > np.random.rand()).argmax()
 
         obs.append(ob)  # store the ob at current decision making step
@@ -182,8 +182,6 @@ def plot_lr_curve(output_file_prefix, max_rew_lr_curve, mean_rew_lr_curve, slow_
 
 def get_traj_worker(pg_learner, env, pa, result):
 
-    print "start"
-
     trajs = []
 
     for i in xrange(pa.num_seq_per_batch):
@@ -215,8 +213,6 @@ def get_traj_worker(pg_learner, env, pa, result):
 
     all_entropy = np.concatenate([traj["entropy"] for traj in trajs])
 
-    print len(all_entropy)
-
     result.append({"all_ob": all_ob,
                    "all_action": all_action,
                    "all_adv": all_adv,
@@ -237,12 +233,12 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
     nw_len_seqs, nw_size_seqs = job_distribution.generate_sequence_work(pa, seed=42)
 
-    for ex in xrange(pa.num_ex):
+    for ex in xrange(pa.num_ex): # number of sequences
 
         print "-prepare for env-", ex
 
         env = environment.Env(pa, nw_len_seqs=nw_len_seqs, nw_size_seqs=nw_size_seqs,
-                              render=False, repre=repre, end=end)
+                              render=True, repre=repre, end=end)
         env.seq_no = ex
         envs.append(env)
 
@@ -265,7 +261,8 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
     print("Preparing for reference data...")
     # --------------------------------------
 
-    ref_discount_rews, ref_slow_down = slow_down_cdf.launch(pa, pg_resume=None, render=False, plot=False, repre=repre, end=end)
+    # Reference examples, get reference discounted rewards and reference slowdown from random, SJF and Tetris algorithms
+    # ref_discount_rews, ref_slow_down = slow_down_cdf.launch(pa, pg_resume=None, render=True, plot=False, repre=repre, end=end)
     mean_rew_lr_curve = []
     max_rew_lr_curve = []
     slow_down_lr_curve = []
@@ -302,7 +299,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             ps.append(p)
 
             ex_counter += 1
-
+            # append pa.num_ex number of Processes in ps until going inside if
             if ex_counter >= pa.batch_size or ex == pa.num_ex - 1:
 
                 print ex, "out of", pa.num_ex
@@ -311,10 +308,9 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
                 for p in ps:
                     p.start()
-                    p.join()
 
-                # for p in ps:
-                #     p.join()
+                for p in ps:
+                    p.join()
 
                 result = []  # convert list from shared memory
                 for r in manager_result:
@@ -329,7 +325,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
                 # Do policy gradient update step, using the first agent
                 # put the new parameter in the last 'worker', then propagate the update at the end
-                grads = pg_learners[pa.batch_size].get_grad(all_ob, all_action, all_adv)
+                grads = pg_learners[pa.batch_size].get_grad(all_ob, all_action, all_adv) #(states, actions, values)
 
                 grads_all.append(grads)
 
@@ -382,14 +378,14 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             param_file.close()
 
             pa.unseen = True
-            slow_down_cdf.launch(pa, pa.output_filename + '_' + str(iteration) + '.pkl',
-                                 render=False, plot=True, repre=repre, end=end)
+            # slow_down_cdf.launch(pa, pa.output_filename + '_' + str(iteration) + '.pkl',
+            #                      render=True, plot=True, repre=repre, end=end)
             pa.unseen = False
             # test on unseen examples
 
-            plot_lr_curve(pa.output_filename,
-                          max_rew_lr_curve, mean_rew_lr_curve, slow_down_lr_curve,
-                          ref_discount_rews, ref_slow_down)
+            # plot_lr_curve(pa.output_filename,
+            #               max_rew_lr_curve, mean_rew_lr_curve, slow_down_lr_curve,
+            #               ref_discount_rews, ref_slow_down)  # draw average of ref_discount_rews, ref_slow_down
 
 
 def main():
@@ -416,7 +412,7 @@ def main():
     pg_resume = None
     # pg_resume = 'data/tmp_450.pkl'
 
-    render = False
+    render = True
 
     launch(pa, pg_resume, render, repre='image', end='all_done')
 

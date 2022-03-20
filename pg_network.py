@@ -73,7 +73,8 @@ class PGLearner:
 
         # image representation
         self.l_out = \
-            build_pg_network(pa.network_input_height, pa.network_input_width, pa.network_output_dim)
+            build_small_conv_pg_network(pa.network_input_height, pa.network_input_width, pa.network_output_dim)
+
 
         # compact representation
         # self.l_out = \
@@ -93,7 +94,7 @@ class PGLearner:
         # training function part
         # ===================================
 
-        prob_act = lasagne.layers.get_output(self.l_out, states)
+        prob_act = lasagne.layers.get_output(self.l_out, states) # @param: output layer, input
 
         self._get_act_prob = theano.function([states], prob_act, allow_input_downcast=True)
 
@@ -138,7 +139,7 @@ class PGLearner:
                                              self.lr_rate, self.rms_rho, self.rms_eps)
         #su_updates = lasagne.updates.nesterov_momentum(su_loss, params, self.lr_rate)
 
-        self._su_train_fn = theano.function([states, su_target], [su_loss, prob_act], updates=su_updates)
+        self._su_train_fn = theano.function([states, su_target], [su_loss, prob_act], updates=su_updates) # input, output, updates
 
         self._su_loss = theano.function([states, su_target], [su_loss, prob_act])
 
@@ -202,7 +203,7 @@ class PGLearner:
 # build neural network
 # ===================================
 
-
+# input + hidden + output
 def build_pg_network(input_height, input_width, output_length):
 
     # l_in = lasagne.layers.InputLayer(
@@ -270,7 +271,7 @@ def build_pg_network(input_height, input_width, output_length):
         # nonlinearity=lasagne.nonlinearities.tanh,
         nonlinearity=lasagne.nonlinearities.rectify,
         # W=lasagne.init.Normal(.0201),
-        W=lasagne.init.Normal(.01),
+        W=lasagne.init.Normal(.01), # std = 0.01
         b=lasagne.init.Constant(0)
     )
 
@@ -285,7 +286,7 @@ def build_pg_network(input_height, input_width, output_length):
 
     return l_out
 
-
+# input + hid1 + hid2 + hid3 + output
 def build_compact_pg_network(input_height, input_width, output_length):
     l_in = lasagne.layers.InputLayer(
         shape=(None, 1, input_height, input_width),
@@ -335,5 +336,35 @@ def build_compact_pg_network(input_height, input_width, output_length):
         W=lasagne.init.HeNormal('relu'),
         b=lasagne.init.Constant(0.05)
         )
+
+    return l_out
+
+def build_small_conv_pg_network(input_height, input_width, output_length):
+
+    l_in = lasagne.layers.InputLayer(
+        shape=(None, 1, input_height, input_width),
+    )
+
+    l_hid1 = lasagne.layers.Conv2DLayer(
+        l_in,
+        num_filters=16,
+        filter_size=2,
+        stride=(1, 1),
+        pad=1,
+        # untie_biases=False,
+        W=lasagne.init.GlorotUniform(.01),
+        b=lasagne.init.Constant(0.),
+        nonlinearity=lasagne.nonlinearities.rectify,
+        convolution=theano.tensor.nnet.conv2d
+    )
+
+    l_out = lasagne.layers.DenseLayer(
+        l_hid1,
+        num_units=output_length,
+        nonlinearity=lasagne.nonlinearities.softmax,
+        # W=lasagne.init.Normal(.0001),
+        W=lasagne.init.Normal(.01),
+        b=lasagne.init.Constant(0)
+    )
 
     return l_out

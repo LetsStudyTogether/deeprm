@@ -5,6 +5,7 @@ import theano
 
 import parameters
 
+plt.interactive(False)
 
 class Env:
     def __init__(self, pa, nw_len_seqs=None, nw_size_seqs=None,
@@ -26,9 +27,10 @@ class Env:
             np.random.seed(seed)
 
         if nw_len_seqs is None or nw_size_seqs is None:
-            # generate new work
+            # generate new work, two arrays representing time and size of #pa.simu_len * self.pa.num_ex of jobs.
+            # length in time, size in number of requested units
             self.nw_len_seqs, self.nw_size_seqs = \
-                self.generate_sequence_work(self.pa.simu_len * self.pa.num_ex)
+                self.generate_sequence_work(self.pa.simu_len * self.pa.num_ex)  # 50 * 1000
 
             self.workload = np.zeros(pa.num_res)
             for i in xrange(pa.num_res):
@@ -49,7 +51,8 @@ class Env:
         self.seq_idx = 0  # index in that sequence
 
         # initialize system
-        self.machine = Machine(pa)
+        self.machines = [Machine(self.pa)]* self.pa.num_machines        # self.machine = Machine(pa)
+        self.machines[0].turn_to_allocate = True
         self.job_slot = JobSlot(pa)
         self.job_backlog = JobBacklog(pa)
         self.job_record = JobRecord()
@@ -86,8 +89,12 @@ class Env:
 
             for i in xrange(self.pa.num_res):
 
-                image_repr[:, ir_pt: ir_pt + self.pa.res_slot] = self.machine.canvas[i, :, :]
-                ir_pt += self.pa.res_slot
+                # image_repr[:, ir_pt: ir_pt + self.pa.res_slot] = self.machine.canvas[i, :, :]
+                # ir_pt += self.pa.res_slot
+
+                for k in xrange(self.pa.num_machines): # fill in space of machines
+                    image_repr[:, ir_pt: ir_pt + self.pa.res_slot] = self.machines[k].canvas[i, :, :]
+                    ir_pt += self.pa.res_slot
 
                 for j in xrange(self.pa.num_nw):
 
@@ -107,7 +114,8 @@ class Env:
                                               float(self.extra_info.max_tracking_time_since_last_job)
             ir_pt += 1
 
-            assert ir_pt == image_repr.shape[1]
+            assert ir_pt == image_repr.shape[1], 'Pointer position({}) does not equal to image width({})'\
+                .format(ir_pt,image_repr.shape[1])
 
             return image_repr
 
@@ -163,10 +171,13 @@ class Env:
         for i in xrange(self.pa.num_res):
 
             plt.subplot(self.pa.num_res,
-                        1 + self.pa.num_nw + 1,  # first +1 for current work, last +1 for backlog queue
+                        self.pa.num_machines + self.pa.num_nw + 1,
+                        # 1 + self.pa.num_nw + 1,  # first +1 for current work, last +1 for backlog queue
                         i * (self.pa.num_nw + 1) + skip_row + 1)  # plot the backlog at the end, +1 to avoid 0
 
-            plt.imshow(self.machine.canvas[i, :, :], interpolation='nearest', vmax=1)
+            # plt.imshow(self.machines.canvas[i, :, :], interpolation='nearest', vmax=1)
+
+            # plt.show()
 
             for j in xrange(self.pa.num_nw):
 
@@ -212,8 +223,11 @@ class Env:
     def get_reward(self):
 
         reward = 0
-        for j in self.machine.running_job:
-            reward += self.pa.delay_penalty / float(j.len)
+        for i in xrange(self.pa.num_machines):
+            for j in self.machines[i].running_job:
+                reward += self.pa.delay_penalty / float(j.len)
+        #for j in self.machine.running_job:
+        #    reward += self.pa.delay_penalty / float(j.len)
 
         for j in self.job_slot.slot:
             if j is not None:
@@ -233,12 +247,15 @@ class Env:
         reward = 0
         info = None
 
-        if a == self.pa.num_nw:  # explicit void action
+        ma_idx = a / self.pa.num_nw
+        jb_idx = a % self.pa.num_nw
+
+        if a == self.pa.num_nw * self.pa.num_machines:  # explicit void action
             status = 'MoveOn'
-        elif self.job_slot.slot[a] is None:  # implicit void action
+        elif self.job_slot.slot[jb_idx] is None:  # implicit void action
             status = 'MoveOn'
         else:
-            allocated = self.machine.allocate_job(self.job_slot.slot[a], self.curr_time)
+            allocated = self.machines[ma_idx].allocate_job(self.job_slot.slot[jb_idx], self.curr_time)
             if not allocated:  # implicit void action
                 status = 'MoveOn'
             else:
@@ -246,7 +263,8 @@ class Env:
 
         if status == 'MoveOn':
             self.curr_time += 1
-            self.machine.time_proceed(self.curr_time)
+            for i in xrange(self.pa.num_machines):
+                self.machines[i].time_proceed(self.curr_time)
             self.extra_info.time_proceed()
 
             # add new jobs
@@ -256,10 +274,11 @@ class Env:
                 if self.seq_idx >= self.pa.simu_len:
                     done = True
             elif self.end == "all_done":  # everything has to be finished
+                # len(self.machine.running_job) == 0 and
                 if self.seq_idx >= self.pa.simu_len and \
-                   len(self.machine.running_job) == 0 and \
-                   all(s is None for s in self.job_slot.slot) and \
-                   all(s is None for s in self.job_backlog.backlog):
+                                sum([len(self.machines[i].running_job) for i in xrange(self.pa.num_machines)]) == 0 and \
+                        all(s is None for s in self.job_slot.slot) and \
+                        all(s is None for s in self.job_backlog.backlog):
                     done = True
                 elif self.curr_time > self.pa.episode_max_length:  # run too long, force termination
                     done = True
@@ -293,13 +312,13 @@ class Env:
             reward = self.get_reward()
 
         elif status == 'Allocate':
-            self.job_record.record[self.job_slot.slot[a].id] = self.job_slot.slot[a]
-            self.job_slot.slot[a] = None
+            self.job_record.record[self.job_slot.slot[jb_idx].id] = self.job_slot.slot[jb_idx]
+            self.job_slot.slot[jb_idx] = None
 
             # dequeue backlog
             if self.job_backlog.curr_size > 0:
-                self.job_slot.slot[a] = self.job_backlog.backlog[0]  # if backlog empty, it will be 0
-                self.job_backlog.backlog[: -1] = self.job_backlog.backlog[1:]
+                self.job_slot.slot[jb_idx] = self.job_backlog.backlog[0]  # if backlog empty, it will be 0
+                self.job_backlog.backlog[: -1] = self.job_backlog.backlog[1:] # move every job one unit size forward
                 self.job_backlog.backlog[-1] = None
                 self.job_backlog.curr_size -= 1
 
@@ -325,7 +344,9 @@ class Env:
         self.curr_time = 0
 
         # initialize system
-        self.machine = Machine(self.pa)
+        self.machines = [Machine(self.pa)] * self.pa.num_machines
+        self.machines[0].turn_to_allocate = True
+        # self.machine = Machine(self.pa)
         self.job_slot = JobSlot(self.pa)
         self.job_backlog = JobBacklog(self.pa)
         self.job_record = JobRecord()
@@ -374,6 +395,8 @@ class Machine:
 
         # graphical representation
         self.canvas = np.zeros((pa.num_res, pa.time_horizon, pa.res_slot))
+
+        self.turn_to_allocate = False
 
     def allocate_job(self, job, curr_time):
 
@@ -459,7 +482,7 @@ def test_backlog():
     pa.new_job_rate = 1
     pa.compute_dependent_parameters()
 
-    env = Env(pa, render=False, repre='image')
+    env = Env(pa, render=True, repre='image')
 
     env.step(5)
     env.step(5)
@@ -510,7 +533,7 @@ def test_compact_speed():
     pa.new_job_rate = 0.3
     pa.compute_dependent_parameters()
 
-    env = Env(pa, render=False, repre='compact')
+    env = Env(pa, render=True, repre='compact')
 
     import other_agents
     import time
@@ -531,14 +554,14 @@ def test_image_speed():
     pa.new_job_rate = 0.3
     pa.compute_dependent_parameters()
 
-    env = Env(pa, render=False, repre='image')
+    env = Env(pa, render=True, repre='image')
 
     import other_agents
     import time
 
     start_time = time.time()
     for i in xrange(100000):
-        a = other_agents.get_sjf_action(env.machine, env.job_slot)
+        a = other_agents.get_sjf_action(env.machines, env.job_slot)
         env.step(a)
     end_time = time.time()
     print "- Elapsed time: ", end_time - start_time, "sec -"

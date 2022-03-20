@@ -1,3 +1,4 @@
+# Generate a sequence of work
 import numpy as np
 
 

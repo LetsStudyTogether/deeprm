@@ -9,11 +9,11 @@ class Parameters:
 
         self.output_filename = 'data/tmp'
 
-        self.num_epochs = 10000         # number of training epochs
-        self.simu_len = 10             # length of the busy cycle that repeats itself
-        self.num_ex = 1                # number of sequences
+        self.num_epochs = 1000         # number of training epochs 10000
+        self.simu_len = 10             # length of the busy cycle that repeats itself, length of each trajectory
+        self.num_ex = 1                # number of sequences, number of episodes
 
-        self.output_freq = 10          # interval for output and store parameters
+        self.output_freq = 5           # interval for output and store parameters
 
         self.num_seq_per_batch = 10    # number of sequences to compute baseline
         self.episode_max_length = 200  # enforcing an artificial terminal
@@ -36,6 +36,8 @@ class Parameters:
 
         self.discount = 1           # discount factor
 
+        self.num_machines = 2       # number of machines in the cluster
+
         # distribution for new job arrival
         self.dist = job_distribution.Dist(self.num_res, self.max_job_size, self.max_job_len)
 
@@ -44,8 +46,8 @@ class Parameters:
         self.backlog_width = int(math.ceil(self.backlog_size / float(self.time_horizon)))
         self.network_input_height = self.time_horizon
         self.network_input_width = \
-            (self.res_slot +
-             self.max_job_size * self.num_nw) * self.num_res + \
+            (self.res_slot * self.num_machines +
+             self.max_job_size * self.num_nw) * self.num_res  + \
             self.backlog_width + \
             1  # for extra info, 1) time since last new job
 
@@ -53,7 +55,7 @@ class Parameters:
         self.network_compact_dim = (self.num_res + 1) * \
             (self.time_horizon + self.num_nw) + 1  # + 1 for backlog indicator
 
-        self.network_output_dim = self.num_nw + 1  # + 1 for void action
+        self.network_output_dim = self.num_nw * self.num_machines + 1  # + 1 for void action
 
         self.delay_penalty = -1       # penalty for delaying things in the current work screen
         self.hold_penalty = -1        # penalty for holding things in the new work screen
@@ -70,6 +72,8 @@ class Parameters:
         self.batch_size = 10
         self.evaluate_policy_name = "SJF"
 
+        self.record_results = True
+
     def compute_dependent_parameters(self):
         assert self.backlog_size % self.time_horizon == 0  # such that it can be converted into an image
         self.backlog_width = self.backlog_size / self.time_horizon
@@ -84,5 +88,5 @@ class Parameters:
         self.network_compact_dim = (self.num_res + 1) * \
             (self.time_horizon + self.num_nw) + 1  # + 1 for backlog indicator
 
-        self.network_output_dim = self.num_nw + 1  # + 1 for void action
+        self.network_output_dim = self.num_nw * self.num_machines + 1  # + 1 for void action
 

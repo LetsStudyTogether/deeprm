@@ -1,6 +1,9 @@
+# test and plot
 import numpy as np
 import cPickle
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('Agg')
 
 import environment
 import parameters
@@ -58,13 +61,26 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
             a = pg_learner.choose_action(ob)
 
         elif test_type == 'Tetris':
-            a = other_agents.get_packer_action(env.machine, env.job_slot)
+            a = other_agents.get_packer_action(env.machines, env.job_slot)
 
         elif test_type == 'SJF':
-            a = other_agents.get_sjf_action(env.machine, env.job_slot)
+            a = other_agents.get_sjf_action(env.machines, env.job_slot)
 
         elif test_type == 'Random':
-            a = other_agents.get_random_action(env.job_slot)
+            a = other_agents.get_random_action(env.machines, env.job_slot)
+
+        elif test_type == 'SJF2':
+            a = other_agents.get_sjf_action_for_multiple_machines(env.machines, env.job_slot)
+
+        elif test_type == 'Packer2':
+            a = other_agents.get_packer_action_for_multiple_machines(env.machines, env.job_slot)
+
+        elif test_type == 'Tetris2':
+            a = other_agents.get_packer_sjf_action_for_multiple_machines(env.machines, env.job_slot, 0.3)
+
+        elif test_type == 'Random2':
+            a = other_agents.get_random_action_for_multiple_machines(env.machines, env.job_slot)
+
 
         ob, rew, done, info = env.step(a, repeat=True)
 
@@ -77,10 +93,12 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
     return np.array(rews), info
 
 
-def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_new_job'):
+def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_new_job'):
+
     # ---- Parameters ----
 
-    test_types = ['Tetris', 'SJF', 'Random']
+    # test_types = ['Tetris', 'SJF', 'Random']
+    test_types = ['Random2','Packer2','Tetris2', 'SJF2'] #'Tetris2',
 
     if pg_resume is not None:
         test_types = ['PG'] + test_types
@@ -199,7 +217,7 @@ def main():
 
     pa.compute_dependent_parameters()
 
-    render = False
+    render = True
 
     plot = True  # plot slowdown cdf
 

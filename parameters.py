@@ -35,6 +35,8 @@ class Parameters:
 
         self.discount = 1  # discount factor
 
+        self.num_machines = 2       # number of machines in the cluster
+
         # distribution for new job arrival
         self.dist = job_distribution.Dist(self.num_res, self.max_job_size, self.max_job_len)
 
@@ -43,8 +45,8 @@ class Parameters:
         self.backlog_width = int(math.ceil(self.backlog_size / float(self.time_horizon)))
         self.network_input_height = self.time_horizon
         self.network_input_width = \
-            (self.res_slot +
-             self.max_job_size * self.num_nw) * self.num_res + \
+            (self.res_slot * self.num_machines +
+             self.max_job_size * self.num_nw) * self.num_res  + \
             self.backlog_width + \
             1  # for extra info, 1) time since last new job
 
@@ -52,7 +54,7 @@ class Parameters:
         self.network_compact_dim = (self.num_res + 1) * \
                                    (self.time_horizon + self.num_nw) + 1  # + 1 for backlog indicator
 
-        self.network_output_dim = self.num_nw + 1  # + 1 for void action
+        self.network_output_dim = self.num_nw * self.num_machines + 1  # + 1 for void action
 
         self.delay_penalty = -1  # penalty for delaying things in the current work screen
         self.hold_penalty = 0  # penalty for holding things in the new work screen
@@ -69,6 +71,8 @@ class Parameters:
         self.batch_size = 10
         self.evaluate_policy_name = "SJF"
 
+        self.record_results = True
+
     def compute_dependent_parameters(self):
         assert self.backlog_size % self.time_horizon == 0  # such that it can be converted into an image
         self.backlog_width = self.backlog_size / self.time_horizon
@@ -83,4 +87,4 @@ class Parameters:
         self.network_compact_dim = (self.num_res + 1) * \
                                    (self.time_horizon + self.num_nw) + 1  # + 1 for backlog indicator
 
-        self.network_output_dim = self.num_nw + 1  # + 1 for void action
+        self.network_output_dim = self.num_nw * self.num_machines + 1  # + 1 for void action

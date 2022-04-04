@@ -7,7 +7,7 @@ Install prerequisites
 ```
 sudo apt-get update
 sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
-pip install --user Theano
+pip install --user Theano==0.7
 pip install --user Lasagne==0.1
 sudo apt-get install python-matplotlib
 ```
@@ -56,7 +56,7 @@ Example:
 - launch policy gradient using network parameter just obtained for job slowdown
 
   ```
-  python2 launcher.py --exp_type=pg_re --simu_len=50 --num_ex=10 --ofile=data/pg_re_slowdown
+  python launcher.py --exp_type=pg_re --simu_len=50 --num_ex=10 --ofile=data/pg_re_multi
   ```
 
 - launch testing and comparing experiemnt on unseen examples with pg agent just trained

@@ -11,6 +11,9 @@ import pg_su
 import slow_down_cdf
 import pg_re_single_core
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 def script_usage():
     print('--exp_type <type of experiment> \n'

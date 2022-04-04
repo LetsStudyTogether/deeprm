@@ -309,7 +309,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
                 for p in ps:
                     p.start()
 
-                for p in ps:
+                # for p in ps:
                     p.join()
 
                 result = []  # convert list from shared memory
@@ -378,8 +378,8 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             param_file.close()
 
             pa.unseen = True
-            # slow_down_cdf.launch(pa, pa.output_filename + '_' + str(iteration) + '.pkl',
-            #                      render=True, plot=True, repre=repre, end=end)
+            slow_down_cdf.launch(pa, pa.output_filename + '_' + str(iteration) + '.pkl',
+                                 render=False, plot=True, repre=repre, end=end)
             pa.unseen = False
             # test on unseen examples
 
@@ -412,7 +412,7 @@ def main():
     pg_resume = None
     # pg_resume = 'data/tmp_450.pkl'
 
-    render = True
+    render = False
 
     launch(pa, pg_resume, render, repre='image', end='all_done')
 

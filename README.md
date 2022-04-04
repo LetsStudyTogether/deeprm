@@ -62,5 +62,5 @@ Example:
 - launch testing and comparing experiemnt on unseen examples with pg agent just trained
 
   ```
-  python launcher.py --exp_type=test --simu_len=50 --num_ex=10 --pg_re=data/pg_re_1600.pkl --unseen=True
+  python launcher.py --exp_type=test --simu_len=50 --num_ex=10 --pg_re=data/pg_re_slowdown_100.pkl --unseen=True
   ```

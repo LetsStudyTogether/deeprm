@@ -176,7 +176,7 @@ def launch(pa, pg_resume=None, render=True, repre='image', end='no_new_job'):
     print("\nPreparing for data...")
     # ----------------------------
 
-    ref_discount_rews, ref_slow_down = slow_down_cdf.launch(pa, pg_resume=None, render=True, plot=False, repre=repre, end=end)
+    ref_discount_rews, ref_slow_down = slow_down_cdf.launch(pa, pg_resume=None, render=False, plot=False, repre=repre, end=end)
 
     mean_rew_lr_curve = []
     max_rew_lr_curve = []
@@ -308,7 +308,7 @@ def launch(pa, pg_resume=None, render=True, repre='image', end='no_new_job'):
 
             # added by wjchen, to record accuracy and rewards
             sample_file = h5py.File('log/re_conv_record_iter'+str(len(slow_down_lr_curve))\
-                                    + datetime.now().strftime('%Y-%m-%d_%H:%M')+'.h5', 'w+')
+                                    + datetime.now().strftime('%Y-%m-%d_%H:%M')+'.h5', 'w')
             sample_file.create_dataset('max_rew_lr_curve', data=max_rew_lr_curve)
             sample_file.create_dataset('mean_rew_lr_curve', data=mean_rew_lr_curve)
             sample_file.create_dataset('slow_down_lr_curve', data=slow_down_lr_curve)

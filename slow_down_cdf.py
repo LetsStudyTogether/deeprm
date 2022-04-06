@@ -76,12 +76,14 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
             a = other_agents.get_packer_action_for_multiple_machines(env.machines, env.job_slot)
 
         elif test_type == 'Tetris2':
-            a = other_agents.get_packer_sjf_action_for_multiple_machines(env.machines, env.job_slot, 0.3)
+            # a = other_agents.get_packer_sjf_action_for_multiple_machines(env.machines, env.job_slot, 0.3)
+            a = other_agents.get_packer_action_for_multiple_machines(env.machines, env.job_slot)
+
 
         elif test_type == 'Random2':
             a = other_agents.get_random_action_for_multiple_machines(env.machines, env.job_slot)
 
-
+        # print test_type
         ob, rew, done, info = env.step(a, repeat=True)
 
         rews.append(rew)
@@ -188,7 +190,8 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
 
         for test_type in test_types:
             slow_down_cdf = np.sort(np.concatenate(jobs_slow_down[test_type]))
-            print test_type, np.average(np.concatenate(job_complete_time[test_type]))
+            # print test_type, np.average(np.concatenate(job_complete_time[test_type]))
+            print test_type, np.average(np.concatenate(jobs_slow_down[test_type]))
             slow_down_yvals = np.arange(len(slow_down_cdf)) / float(len(slow_down_cdf))
             ax.plot(slow_down_cdf, slow_down_yvals, linewidth=2, label=test_type)
 

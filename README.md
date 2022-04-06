@@ -50,7 +50,7 @@ Example:
 - launch supervised learning for policy estimation
 
   ```
-  python launcher.py --exp_type=pg_su --simu_len=50 --num_ex=1000 --ofile=data/pg_su --out_freq=10 
+  python launcher.py --exp_type=pg_su --simu_len=50 --num_ex=1000 --ofile=data/pg_su_multi --out_freq=10 
   ```
 
 - launch policy gradient using network parameter just obtained for job slowdown
@@ -62,7 +62,7 @@ Example:
 - launch testing and comparing experiemnt on unseen examples with pg agent just trained
 
   ```
-  python launcher.py --exp_type=test --simu_len=50 --num_ex=10 --pg_re=data/pg_re_slowdown_100.pkl --unseen=True
+  python launcher.py --exp_type=test --simu_len=50 --num_ex=10 --pg_re=data/pg_re_multi_100.pkl --unseen=True
   ```
 
 

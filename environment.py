@@ -114,8 +114,8 @@ class Env:
                                               float(self.extra_info.max_tracking_time_since_last_job)
             ir_pt += 1
 
-            assert ir_pt == image_repr.shape[1], 'Pointer position({}) does not equal to image width({})'\
-                .format(ir_pt,image_repr.shape[1])
+            # assert ir_pt == image_repr.shape[1], 'Pointer position({}) does not equal to image width({})'\
+            #     .format(ir_pt,image_repr.shape[1])
 
             return image_repr
 
@@ -249,6 +249,7 @@ class Env:
         info = None
 
         ma_idx = a / self.pa.num_nw
+        # print ma_idx, len(self.machines)
         jb_idx = a % self.pa.num_nw
 
         if a == self.pa.num_nw * self.pa.num_machines:  # explicit void action
@@ -256,7 +257,10 @@ class Env:
         elif self.job_slot.slot[jb_idx] is None:  # implicit void action
             status = 'MoveOn'
         else:
-            allocated = self.machines[ma_idx].allocate_job(self.job_slot.slot[jb_idx], self.curr_time)
+            allocated = self.machines[
+                ma_idx].allocate_job(
+                    self.job_slot.slot[jb_idx],
+                     self.curr_time)
             if not allocated:  # implicit void action
                 status = 'MoveOn'
             else:

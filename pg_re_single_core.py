@@ -1,8 +1,12 @@
-import numpy as np
 import time
+# import threading
+import numpy as np
 import theano
 import cPickle
 import matplotlib.pyplot as plt
+import h5py
+from datetime import datetime
+import re
 
 import environment
 import pg_network
@@ -31,7 +35,7 @@ def get_entropy(vec):
     return entropy
 
 
-def get_traj(agent, env, episode_max_length, render=False):
+def get_traj(agent, env, episode_max_length, render=True):
     """
     Run agent-environment loop for one whole episode (trajectory)
     Return dictionary of results
@@ -48,7 +52,7 @@ def get_traj(agent, env, episode_max_length, render=False):
     for _ in xrange(episode_max_length):
         act_prob = agent.get_one_act_prob(ob)
         csprob_n = np.cumsum(act_prob)
-        a = (csprob_n > np.random.rand()).argmax()
+        a = (csprob_n > np.random.rand()).argmax() # select on prob distribution
 
         obs.append(ob)  # store the ob at current decision making step
         acts.append(a)
@@ -59,7 +63,7 @@ def get_traj(agent, env, episode_max_length, render=False):
         entropy.append(get_entropy(act_prob))
 
         if done: break
-        if render: env.render()
+        # if render: env.render()
 
     return {'reward': np.array(rews),
             'ob': np.array(obs),
@@ -158,19 +162,18 @@ def plot_lr_curve(output_file_prefix, max_rew_lr_curve, mean_rew_lr_curve, slow_
     plt.savefig(output_file_prefix + "_lr_curve" + ".pdf")
 
 
-def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
+def launch(pa, pg_resume=None, render=True, repre='image', end='no_new_job'):
+
 
     env = environment.Env(pa, render=render, repre=repre, end=end)
 
     pg_learner = pg_network.PGLearner(pa)
 
-    if pg_resume is not None:
-        net_handle = open(pg_resume, 'rb')
-        net_params = cPickle.load(net_handle)
-        pg_learner.set_net_params(net_params)
+
+
 
     # ----------------------------
-    print("Preparing for data...")
+    print("\nPreparing for data...")
     # ----------------------------
 
     ref_discount_rews, ref_slow_down = slow_down_cdf.launch(pa, pg_resume=None, render=False, plot=False, repre=repre, end=end)
@@ -178,10 +181,27 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
     mean_rew_lr_curve = []
     max_rew_lr_curve = []
     slow_down_lr_curve = []
+    startIdx = 0
+
+    if pg_resume is not None and 're' in pg_resume:
+        net_handle = open(pg_resume, 'rb')
+        net_params = cPickle.load(net_handle)
+        pg_learner.set_net_params(net_params)
+        startIdx = re.match('.+?(\d+).+', pg_resume)
+        startIdx = int(startIdx.group(1))
+
+        filename = 'log/re_conv_record_iter' + startIdx + '.h5'
+        record_file = h5py.File(filename,'r')
+        mean_rew_lr_curve = record_file['mean_rew_lr_curve'][()]
+        max_rew_lr_curve = record_file['max_rew_lr_curve'][()]
+        slow_down_lr_curve = record_file['slow_down_lr_curve'][()]
+
 
     timer_start = time.time()
 
-    for iteration in xrange(pa.num_epochs):
+    print("\nStart reinforcement learning...")
+
+    for iteration in xrange(startIdx, pa.num_epochs):
 
         all_ob = []
         all_action = []
@@ -260,6 +280,21 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
         print "Elapsed time\t %s" % (timer_end - timer_start), "seconds"
         print "-----------------"
 
+        f = open('log/re_log_' + datetime.now().strftime('%Y-%m-%d_%H:%M:%S'), 'w+')
+        f.write("-----------------\n")
+        f.write("Iteration: \t %i\n" % (iteration))
+        f.write("NumTrajs: \t %i\n" % (len(eprews)))
+        f.write("NumTimesteps: \t %i\n" % (np.sum(eplens)))
+        # f.write("Loss:     \t %s\n".format(loss))
+        f.write("MaxRew: \t %s\n" % (np.average([np.max(rew) for rew in all_eprews])))
+        f.write("MeanRew: \t %s +- %s\n" % (np.mean(eprews), np.std(eprews)))
+        f.write("MeanSlowdown: \t %s\n" % (np.mean(all_slowdown)))
+        f.write("MeanLen: \t %s +- %s\n" % (np.mean(eplens), np.std(eplens)))
+        f.write("MeanEntropy \t %s\n" % ((np.mean(all_entropy))))
+        f.write("Elapsed time\t %s seconds\n" % ((timer_end - timer_start)))
+        f.write("-----------------\n")
+        f.close()
+
         timer_start = time.time()
 
         max_rew_lr_curve.append(np.average([np.max(rew) for rew in all_eprews]))
@@ -271,12 +306,28 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             cPickle.dump(pg_learner.get_params(), param_file, -1)
             param_file.close()
 
+            # added by wjchen, to record accuracy and rewards
+            sample_file = h5py.File('log/re_conv_record_iter'+str(len(slow_down_lr_curve))\
+                                    + datetime.now().strftime('%Y-%m-%d_%H:%M')+'.h5', 'w')
+            sample_file.create_dataset('max_rew_lr_curve', data=max_rew_lr_curve)
+            sample_file.create_dataset('mean_rew_lr_curve', data=mean_rew_lr_curve)
+            sample_file.create_dataset('slow_down_lr_curve', data=slow_down_lr_curve)
+
+            ref_dr = sample_file.create_group('ref_discount_rews')
+            for k, v in ref_discount_rews.items():
+                ref_dr[k] = np.average(v)
+
+            ref_sd = sample_file.create_group('ref_slow_down')
+            for k, v in ref_slow_down.items():
+                ref_sd[k] = np.average(np.concatenate(v))
+            sample_file.close()
+
             slow_down_cdf.launch(pa, pa.output_filename + '_' + str(iteration) + '.pkl',
-                                 render=False, plot=True, repre=repre, end=end)
+                                 render=True, plot=True, repre=repre, end=end)
 
             plot_lr_curve(pa.output_filename,
-                          max_rew_lr_curve, mean_rew_lr_curve, slow_down_lr_curve,
-                          ref_discount_rews, ref_slow_down)
+                         max_rew_lr_curve, mean_rew_lr_curve, slow_down_lr_curve,
+                         ref_discount_rews, ref_slow_down)
 
 
 def main():
@@ -302,7 +353,7 @@ def main():
     pg_resume = None
     # pg_resume = 'data/tmp_0.pkl'
 
-    render = False
+    render = True
 
     launch(pa, pg_resume, render, repre='image', end='all_done')
 

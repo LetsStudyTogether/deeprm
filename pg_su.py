@@ -1,3 +1,4 @@
+# supervised learning for policy gradient
 import numpy as np
 import theano
 import time
@@ -9,14 +10,14 @@ import pg_network
 import other_agents
 import job_distribution
 
-np.set_printoptions(threshold='nan')
+np.set_printoptions(threshold=sys.maxsize)
 
 
 def add_sample(X, y, idx, X_to_add, y_to_add):
     X[idx, 0, :, :] = X_to_add
     y[idx] = y_to_add
 
-
+# get minibatch data
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
     if shuffle:
@@ -30,9 +31,9 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
         yield inputs[excerpt], targets[excerpt]
 
 
-def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
+def launch(pa, pg_resume=None, render=True, repre='image', end='no_new_job'):
 
-    env = environment.Env(pa, render=False, repre=repre, end=end)
+    env = environment.Env(pa, render=True, repre=repre, end=end)
 
     pg_learner = pg_network.PGLearner(pa)
 
@@ -41,8 +42,10 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
         net_params = cPickle.load(net_handle)
         pg_learner.set_net_params(net_params)
 
+    # Shortest Job First
     if pa.evaluate_policy_name == "SJF":
         evaluate_policy = other_agents.get_sjf_action
+    # Packer 
     elif pa.evaluate_policy_name == "PACKER":
         evaluate_policy = other_agents.get_packer_action
     else:
@@ -54,6 +57,9 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
     # ----------------------------
 
     nw_len_seqs, nw_size_seqs = job_distribution.generate_sequence_work(pa, seed=42)
+
+    print 'nw_time_seqs_size=', nw_len_seqs.shape
+    print 'nw_size_seqs_size=', nw_size_seqs.shape
 
     # print 'nw_time_seqs=', nw_len_seqs
     # print 'nw_size_seqs=', nw_size_seqs
@@ -71,7 +77,10 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
     counter = 0
 
+    # supervised learning -->
     for train_ex in range(pa.num_ex):
+
+        print 'Ex no.' + str(train_ex)
 
         env.reset()
 
@@ -80,10 +89,12 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             # ---- get current state ----
             ob = env.observe()
 
-            a = evaluate_policy(env.machine, env.job_slot)
+            a = evaluate_policy(env.machine, env.job_slot)  # a: action
 
-            if counter < pa.simu_len * pa.num_ex * mem_alloc:
+            if counter < pa.simu_len * pa.num_ex * mem_alloc: # ?
 
+                # print X.shape, y.shape
+                # print X, y
                 add_sample(X, y, counter, ob, a)
                 counter += 1
 
@@ -122,6 +133,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
         start_time = time.time()
         for batch in iterate_minibatches(X_train, y_train, pa.batch_size, shuffle=True):
             inputs, targets = batch
+            print inputs.shape, targets.shape
             err, prob_act = pg_learner.su_train(inputs, targets)
             pg_act = np.argmax(prob_act, axis=1)
             train_err += err
@@ -184,7 +196,7 @@ def main():
     pg_resume = None
     # pg_resume = 'data/tmp_450.pkl'
 
-    render = False
+    render = True
 
     launch(pa, pg_resume, render, repre='image', end='all_done')
 

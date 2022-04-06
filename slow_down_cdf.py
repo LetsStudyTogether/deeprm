@@ -60,28 +60,14 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
         if test_type == 'PG':
             a = pg_learner.choose_action(ob)
 
-        elif test_type == 'Tetris':
-            a = other_agents.get_packer_action(env.machines, env.job_slot)
+        # elif test_type == 'Tetris':
+        #     a = other_agents.get_packer_action(env.machines, env.job_slot)
 
-        elif test_type == 'SJF':
-            a = other_agents.get_sjf_action(env.machines, env.job_slot)
+        # elif test_type == 'SJF':
+        #     a = other_agents.get_sjf_action(env.machines, env.job_slot)
 
-        elif test_type == 'Random':
-            a = other_agents.get_random_action(env.machines, env.job_slot)
-
-        elif test_type == 'SJF2':
-            a = other_agents.get_sjf_action_for_multiple_machines(env.machines, env.job_slot)
-
-        elif test_type == 'Packer2':
-            a = other_agents.get_packer_action_for_multiple_machines(env.machines, env.job_slot)
-
-        elif test_type == 'Tetris2':
-            # a = other_agents.get_packer_sjf_action_for_multiple_machines(env.machines, env.job_slot, 0.3)
-            a = other_agents.get_packer_action_for_multiple_machines(env.machines, env.job_slot)
-
-
-        elif test_type == 'Random2':
-            a = other_agents.get_random_action_for_multiple_machines(env.machines, env.job_slot)
+        # elif test_type == 'Random':
+        #     a = other_agents.get_random_action(env.machines, env.job_slot)
 
         # print test_type
         ob, rew, done, info = env.step(a, repeat=True)
@@ -100,7 +86,7 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
     # ---- Parameters ----
 
     # test_types = ['Tetris', 'SJF', 'Random']
-    test_types = ['Random2','Packer2','Tetris2', 'SJF2'] #'Tetris2',
+    test_types = []
 
     if pg_resume is not None:
         test_types = ['PG'] + test_types

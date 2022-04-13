@@ -1,5 +1,5 @@
 import os
-os.environ["THEANO_FLAGS"] = "device=cpu"#,floatX=float32"
+os.environ["THEANO_FLAGS"] = "device=cpu,floatX=float32"
 import sys
 import getopt
 import matplotlib
@@ -7,12 +7,9 @@ matplotlib.use('Agg')
 
 import parameters
 import pg_re
+import pg_re_single_core
 import pg_su
 import slow_down_cdf
-import pg_re_single_core
-
-import warnings
-warnings.filterwarnings("ignore")
 
 
 def script_usage():

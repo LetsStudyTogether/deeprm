@@ -3,6 +3,8 @@ import math
 import matplotlib.pyplot as plt
 import theano
 
+import itertools
+
 import parameters
 
 
@@ -491,8 +493,42 @@ class MultiMachines:
 
                 #TODO : take the minimum data locality score
                 #ex. the combination which has the minimum sum of the differences between all pairs of indices
-                for res_idx, machine_idxs in enumerate(idx_of_abvl_res):
-                    idx_of_res_alloc[machine_idxs[0]].append(res_idx) #take the first index for now
+                
+                # Assume we have M machines and R resources, resouces were allocated to machines indexs from M_0 to M_R
+                # The total data locality score will be (M_1 - M_0)^2 + (M_2 - M_0)^2 + ... + (M_R - M_0)^2
+                # I took square of that value becuase I think there should be more punishment for allocating to distant machines
+                # Then the maximum data locality score will be (M - 1)^2 * R/2, the minimum will be 0
+                # Take the average it should be (M - 1)^2 * R/4
+                # So if we meet any combination scores no great than average, we will take it, 
+                # otherwise we will take the minimum score ultimately.
+
+                threshold_score = (self.num_machines - 1) ** 2 * self.num_res / 4
+
+                current_minimum_score = 0.0
+                current_minimum_combination = []
+
+                all_combinations = itertools.product(*idx_of_abvl_res)
+                for tmp in all_combinations:
+                    tmp_score = 0.0
+                    for machine_idx in range(1,len(tmp)):
+                        tmp_score += (tmp[machine_idx] - tmp[0]) ** 2
+                    # print tmp, tmp_score
+                    # current_minimum_combination = list(tmp)
+                    if tmp_score <= threshold_score:
+                        current_minimum_combination = list(tmp)
+                        break
+                    else:
+                        if tmp_score <= current_minimum_score:
+                            current_minimum_combination = list(tmp)
+                            current_minimum_score = tmp_score
+
+                # print current_minimum_combination
+                
+                for res_idx, machine_idx in enumerate(current_minimum_combination):
+                    idx_of_res_alloc[machine_idx].append(res_idx)
+
+                # for res_idx, machine_idxs in enumerate(idx_of_abvl_res):
+                #     idx_of_res_alloc[machine_idxs[0]].append(res_idx) #take the first index for now
                     
                 for machine_idx, res_alloc_list in enumerate(idx_of_res_alloc):
                     if len(idx_of_res_alloc[machine_idx]) > 0: #if more than one resources to be allocated

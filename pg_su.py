@@ -80,7 +80,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
             # ---- get current state ----
             ob = env.observe()
 
-            a = evaluate_policy(env.machine, env.job_slot)
+            a = evaluate_policy(env.machines, env.job_slot)
 
             if counter < pa.simu_len * pa.num_ex * mem_alloc:
 

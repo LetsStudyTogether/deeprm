@@ -460,6 +460,34 @@ class MultiMachines:
             m = SingleMachine(pa)
             self.machinelist.append(m)
 
+    def can_allocate_to_multimachines(self, job):
+        """
+        only checks if a job can be allocated (used by other agents)
+        """
+        can_allocate = True
+
+        for t in xrange(0, self.time_horizon - job.len):
+     
+            idx_of_abvl_res = [[] for i in range(self.num_res)] #annotate the indices of machine which is available for each resource
+
+            for i in range(len(self.machinelist)):
+                abvl_res = self.machinelist[i].can_allocate_job(job, t)
+
+                for res in range(len(abvl_res)):
+                    if abvl_res[res]: #if this resource is available in ith machine
+                        idx_of_abvl_res[res].append(i)
+
+            
+            for idxs in idx_of_abvl_res:
+                if len(idxs) == 0:
+                    can_allocate = False
+                    break
+            
+            if can_allocate:
+                return True, idx_of_abvl_res
+
+        return False, None
+
     def allocate_job_to_multimachines(self, job, curr_time):
         """
         for all the available combinations of machine resources

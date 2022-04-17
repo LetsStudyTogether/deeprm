@@ -1,9 +1,6 @@
-# test and plot
 import numpy as np
 import cPickle
-import matplotlib
 import matplotlib.pyplot as plt
-matplotlib.use('Agg')
 
 import environment
 import parameters
@@ -18,8 +15,8 @@ def discount(x, gamma):
     """
     out = np.zeros(len(x))
     out[-1] = x[-1]
-    for i in reversed(xrange(len(x) - 1)):
-        out[i] = x[i] + gamma * out[i + 1]
+    for i in reversed(xrange(len(x)-1)):
+        out[i] = x[i] + gamma*out[i+1]
     assert x.ndim >= 1
     # More efficient version:
     # scipy.signal.lfilter([1],[1,-gamma],x[::-1], axis=0)[::-1]
@@ -60,16 +57,15 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
         if test_type == 'PG':
             a = pg_learner.choose_action(ob)
 
-        # elif test_type == 'Tetris':
-        #     a = other_agents.get_packer_action(env.machines, env.job_slot)
+        elif test_type == 'Tetris':
+            a = other_agents.get_packer_action(env.machines, env.job_slot)
 
-        # elif test_type == 'SJF':
-        #     a = other_agents.get_sjf_action(env.machines, env.job_slot)
+        elif test_type == 'SJF':
+            a = other_agents.get_sjf_action(env.machines, env.job_slot)
 
-        # elif test_type == 'Random':
-        #     a = other_agents.get_random_action(env.machines, env.job_slot)
+        elif test_type == 'Random':
+            a = other_agents.get_random_action(env.job_slot)
 
-        # print test_type
         ob, rew, done, info = env.step(a, repeat=True)
 
         rews.append(rew)
@@ -81,12 +77,11 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
     return np.array(rews), info
 
 
-def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_new_job'):
+def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_new_job'):
 
     # ---- Parameters ----
 
-    # test_types = ['Tetris', 'SJF', 'Random']
-    test_types = []
+    test_types = ['Tetris', 'SJF', 'Random']
 
     if pg_resume is not None:
         test_types = ['PG'] + test_types
@@ -101,8 +96,6 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
     num_job_remain = {}
     job_remain_delay = {}
 
-    job_complete_time = {}
-
     for test_type in test_types:
         all_discount_rews[test_type] = []
         jobs_slow_down[test_type] = []
@@ -112,13 +105,12 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
         num_job_remain[test_type] = []
         job_remain_delay[test_type] = []
 
-        job_complete_time[test_type] = []
-
     for seq_idx in xrange(pa.num_ex):
         print('\n\n')
         print("=============== " + str(seq_idx) + " ===============")
 
         for test_type in test_types:
+
             rews, info = get_traj(test_type, pa, env, pa.episode_max_length, pg_resume)
 
             print "---------- " + test_type + " -----------"
@@ -140,10 +132,6 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
 
             finished_idx = (finish_time >= 0)
             unfinished_idx = (finish_time < 0)
-
-            job_complete_time[test_type].append(
-                finish_time[finished_idx] - enter_time[finished_idx]
-            )
 
             jobs_slow_down[test_type].append(
                 (finish_time[finished_idx] - enter_time[finished_idx]) / job_len[finished_idx]
@@ -176,15 +164,13 @@ def launch(pa, pg_resume=None, render=True, plot=False, repre='image', end='no_n
 
         for test_type in test_types:
             slow_down_cdf = np.sort(np.concatenate(jobs_slow_down[test_type]))
-            # print test_type, np.average(np.concatenate(job_complete_time[test_type]))
-            print test_type, np.average(np.concatenate(jobs_slow_down[test_type]))
-            slow_down_yvals = np.arange(len(slow_down_cdf)) / float(len(slow_down_cdf))
+            slow_down_yvals = np.arange(len(slow_down_cdf))/float(len(slow_down_cdf))
             ax.plot(slow_down_cdf, slow_down_yvals, linewidth=2, label=test_type)
 
         plt.legend(loc=4)
         plt.xlabel("job slowdown", fontsize=20)
         plt.ylabel("CDF", fontsize=20)
-        plt.show()
+        # plt.show()
         plt.savefig(pg_resume + "_slowdown_fig" + ".pdf")
 
     return all_discount_rews, jobs_slow_down
@@ -206,7 +192,7 @@ def main():
 
     pa.compute_dependent_parameters()
 
-    render = True
+    render = False
 
     plot = True  # plot slowdown cdf
 

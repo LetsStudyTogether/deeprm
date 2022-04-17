@@ -9,10 +9,9 @@ def get_packer_action(machines, job_slot):
             new_job = job_slot.slot[i]
             if new_job is not None:  # there is a pending job
                 
-                # avbl_res = machine.avbl_slot[:new_job.len, :]
                 can_allocate, idx_of_abvl_res = machines.can_allocate_to_multimachines(new_job)
                 if can_allocate: # enough resource to allocate
-                    idx_of_res_alloc = [[] for i in range(self.num_machines)] ##list of resource indices to be allocated per machine
+                    idx_of_res_alloc = [[] for i in range(machines.num_machines)] ##list of resource indices to be allocated per machine
 
                     for res_idx, machine_idxs in enumerate(idx_of_abvl_res):
                         idx_of_res_alloc[machine_idxs[0]].append(res_idx) #take the first index for now
@@ -20,7 +19,8 @@ def get_packer_action(machines, job_slot):
                     tmp_align_score = 0
                     for machine_idx, res_alloc_list in enumerate(idx_of_res_alloc):
                         for res_idx in res_alloc_list:
-                            tmp_align_score += machines.machine_list[machine_idx].avbl_res[0, res_idx].dot(new_job.res_vec[res_idx]) 
+                            avbl_res = machines.machinelist[machine_idx].avbl_slot[:new_job.len, :]
+                            tmp_align_score += avbl_res[0, res_idx] * (new_job.res_vec[res_idx]) 
 
                     if tmp_align_score > align_score:
                         align_score = tmp_align_score
@@ -57,11 +57,10 @@ def get_packer_sjf_action(machines, job_slot, knob):  # knob controls which to f
             new_job = job_slot.slot[i]
             if new_job is not None:  # there is a pending job
 
-                #avbl_res = machine.avbl_slot[:new_job.len, :]
                 can_allocate, idx_of_abvl_res = machines.can_allocate_to_multimachines(new_job)
                 
                 if can_allocate: # enough resource to allocate
-                    idx_of_res_alloc = [[] for i in range(self.num_machines)] ##list of resource indices to be allocated per machine
+                    idx_of_res_alloc = [[] for i in range(machines.num_machines)] ##list of resource indices to be allocated per machine
 
                     for res_idx, machine_idxs in enumerate(idx_of_abvl_res):
                         idx_of_res_alloc[machine_idxs[0]].append(res_idx) #take the first index for now
@@ -69,7 +68,8 @@ def get_packer_sjf_action(machines, job_slot, knob):  # knob controls which to f
                     tmp_align_score = 0
                     for machine_idx, res_alloc_list in enumerate(idx_of_res_alloc):
                         for res_idx in res_alloc_list:
-                            tmp_align_score += machines.machine_list[machine_idx].avbl_res[0, res_idx].dot(new_job.res_vec[res_idx]) 
+                            avbl_res = machines.machinelist[machine_idx].avbl_slot[:new_job.len, :]
+                            tmp_align_score += avbl_res[0, res_idx] * (new_job.res_vec[res_idx]) 
 
                     tmp_sjf_score = 1 / float(new_job.len)
 

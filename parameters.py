@@ -58,6 +58,7 @@ class Parameters:
         self.delay_penalty = -1       # penalty for delaying things in the current work screen
         self.hold_penalty = -1        # penalty for holding things in the new work screen
         self.dismiss_penalty = -1     # penalty for missing a job because the queue is full
+        self.locality_penalty = -1    # penalty for data locality score
 
         self.num_frames = 1           # number of frames to combine and process
         self.lr_rate = 0.001          # learning rate

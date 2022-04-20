@@ -13,8 +13,6 @@ def get_packer_action(machines, job_slot):
                 if can_allocate: # enough resource to allocate
                     idx_of_res_alloc = [[] for i in range(machines.num_machines)] ##list of resource indices to be allocated per machine
 
-                    threshold_score = (machines.num_machines - 1) ** 2 * machines.num_res / 4
-
                     current_minimum_score = 0.0
                     current_minimum_combination = []
 
@@ -25,8 +23,9 @@ def get_packer_action(machines, job_slot):
                             tmp_score += (tmp[machine_idx] - tmp[0]) ** 2
                         # print tmp, tmp_score
                         # current_minimum_combination = list(tmp)
-                        if tmp_score <= threshold_score:
+                        if tmp_score <= machines.data_locality_threshold:
                             current_minimum_combination = list(tmp)
+                            current_minimum_score = tmp_score
                             break
                         else:
                             if tmp_score <= current_minimum_score:
@@ -34,6 +33,7 @@ def get_packer_action(machines, job_slot):
                                 current_minimum_score = tmp_score
 
                     # print current_minimum_combination
+                    new_job.data_locality_score = current_minimum_score
 
                     for res_idx, machine_idx in enumerate(current_minimum_combination):
                         idx_of_res_alloc[machine_idx].append(res_idx)
@@ -84,8 +84,6 @@ def get_packer_sjf_action(machines, job_slot, knob):  # knob controls which to f
                 if can_allocate: # enough resource to allocate
                     idx_of_res_alloc = [[] for i in range(machines.num_machines)] ##list of resource indices to be allocated per machine
 
-                    threshold_score = (machines.num_machines - 1) ** 2 * machines.num_res / 4
-
                     current_minimum_score = 0.0
                     current_minimum_combination = []
 
@@ -96,8 +94,9 @@ def get_packer_sjf_action(machines, job_slot, knob):  # knob controls which to f
                             tmp_score += (tmp[machine_idx] - tmp[0]) ** 2
                         # print tmp, tmp_score
                         # current_minimum_combination = list(tmp)
-                        if tmp_score <= threshold_score:
+                        if tmp_score <= machines.data_locality_threshold:
                             current_minimum_combination = list(tmp)
+                            current_minimum_score = tmp_score
                             break
                         else:
                             if tmp_score <= current_minimum_score:
@@ -105,6 +104,7 @@ def get_packer_sjf_action(machines, job_slot, knob):  # knob controls which to f
                                 current_minimum_score = tmp_score
 
                     # print current_minimum_combination
+                    new_job.data_locality_score = current_minimum_score
 
                     for res_idx, machine_idx in enumerate(current_minimum_combination):
                         idx_of_res_alloc[machine_idx].append(res_idx)

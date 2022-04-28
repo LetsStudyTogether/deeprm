@@ -221,6 +221,8 @@ class Env:
         
         for j in self.machines.running_job:
             reward += self.pa.delay_penalty / float(j.len)
+            # Only conside running jobs' data locality score penalty
+            reward += self.pa.locality_penalty * float(j.data_locality_score) / float(j.len)
 
         # for j in self.machine.running_job:
         #     reward += self.pa.delay_penalty / float(j.len)
@@ -352,6 +354,8 @@ class Job:
         self.start_time = -1  # not being allocated
         self.finish_time = -1
 
+        self.data_locality_score = 0
+
 
 class JobSlot:
     def __init__(self, pa):
@@ -453,6 +457,9 @@ class MultiMachines:
         self.res_slot = pa.res_slot
         self.num_machines = pa.num_machines
 
+        # Reduced data locality threshold
+        self.data_locality_threshold = (self.num_machines - 1) ** 2 * self.num_res / 16
+
         self.machinelist = []
         self.running_job = []
        
@@ -528,7 +535,7 @@ class MultiMachines:
                 # So if we meet any combination scores no great than average, we will take it, 
                 # otherwise we will take the minimum score ultimately.
 
-                threshold_score = (self.num_machines - 1) ** 2 * self.num_res / 4
+                # threshold_score = (self.num_machines - 1) ** 2 * self.num_res / 4
 
                 current_minimum_score = 0.0
                 current_minimum_combination = []
@@ -540,15 +547,16 @@ class MultiMachines:
                         tmp_score += (tmp[machine_idx] - tmp[0]) ** 2
                     # print tmp, tmp_score
                     # current_minimum_combination = list(tmp)
-                    if tmp_score <= threshold_score:
+                    if tmp_score <= self.data_locality_threshold:
                         current_minimum_combination = list(tmp)
+                        current_minimum_score = tmp_score
                         break
                     else:
                         if tmp_score <= current_minimum_score:
                             current_minimum_combination = list(tmp)
                             current_minimum_score = tmp_score
 
-                # print current_minimum_combination
+                job.data_locality_score = current_minimum_score
 
                 for res_idx, machine_idx in enumerate(current_minimum_combination):
                     idx_of_res_alloc[machine_idx].append(res_idx)

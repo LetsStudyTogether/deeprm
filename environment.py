@@ -458,7 +458,12 @@ class MultiMachines:
         self.num_machines = pa.num_machines
 
         # Reduced data locality threshold
-        self.data_locality_threshold = (self.num_machines - 1) ** 2 * self.num_res / 16
+        self.data_locality_threshold = 0.0
+
+        if (self.num_machines - 1) ** 2 * self.num_res / 16 > 1.0:
+            self.data_locality_threshold = (self.num_machines - 1) ** 2 * self.num_res / 16 
+        else:
+            self.data_locality_threshold = 1.0
 
         self.machinelist = []
         self.running_job = []

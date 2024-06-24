@@ -66,6 +66,9 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
         elif test_type == 'Random':
             a = other_agents.get_random_action(env.job_slot)
 
+        elif test_type == 'Packer':
+            a = other_agents.get_packer_sjf_action(env.machines, env.job_slot, 0)
+
         ob, rew, done, info = env.step(a, repeat=True)
 
         rews.append(rew)
@@ -81,7 +84,7 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
 
     # ---- Parameters ----
 
-    test_types = ['Tetris', 'SJF', 'Random']
+    test_types = ['Tetris', 'SJF', 'Random', 'Packer']
 
     if pg_resume is not None:
         test_types = ['PG'] + test_types
@@ -96,6 +99,9 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
     num_job_remain = {}
     job_remain_delay = {}
 
+    job_complete_time = {}
+    data_locality_score = {}
+
     for test_type in test_types:
         all_discount_rews[test_type] = []
         jobs_slow_down[test_type] = []
@@ -104,6 +110,9 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
         job_len_remain[test_type] = []
         num_job_remain[test_type] = []
         job_remain_delay[test_type] = []
+
+        job_complete_time[test_type] = []
+        data_locality_score[test_type] = []
 
     for seq_idx in xrange(pa.num_ex):
         print('\n\n')
@@ -130,6 +139,9 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
             job_len = np.array([info.record[i].len for i in xrange(len(info.record))])
             job_total_size = np.array([np.sum(info.record[i].res_vec) for i in xrange(len(info.record))])
 
+            # job_data_locality_score = np.array([info.record[i].data_locality_score for i in xrange(len(info.record))])
+            job_data_locality_score = np.array([info.record[i].data_locality_score for i in xrange(len(info.record))])
+
             finished_idx = (finish_time >= 0)
             unfinished_idx = (finish_time < 0)
 
@@ -152,6 +164,14 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
                 np.sum(pa.episode_max_length - enter_time[unfinished_idx])
             )
 
+            job_complete_time[test_type].append(
+                finish_time[finished_idx] - enter_time[finished_idx]
+            )
+
+            data_locality_score[test_type].append(
+                job_data_locality_score[finished_idx]
+            )
+
         env.seq_no = (env.seq_no + 1) % env.pa.num_ex
 
     # -- matplotlib colormap no overlap --
@@ -165,6 +185,10 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
         for test_type in test_types:
             slow_down_cdf = np.sort(np.concatenate(jobs_slow_down[test_type]))
             slow_down_yvals = np.arange(len(slow_down_cdf))/float(len(slow_down_cdf))
+            print 'Slowdown:', test_type, np.average(np.concatenate(jobs_slow_down[test_type]))
+            print 'Complete time:', test_type, np.average(np.concatenate(job_complete_time[test_type]))
+            print 'Locality score:', test_type, np.average(np.concatenate(data_locality_score[test_type]))
+            print '\n'
             ax.plot(slow_down_cdf, slow_down_yvals, linewidth=2, label=test_type)
 
         plt.legend(loc=4)
